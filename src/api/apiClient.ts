@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { clearCurrentUser } from '../utils/auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
@@ -9,7 +10,7 @@ export const apiClient = axios.create({
   },
 });
 
-// Add a request interceptor to attach the JWT token
+// ── Request interceptor: attach JWT token ──────────────────────────────────
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -19,4 +20,17 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+// ── Response interceptor: handle token expiry / 401 ───────────────────────
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token is expired or invalid — clear session and redirect to login
+      clearCurrentUser();
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
 );

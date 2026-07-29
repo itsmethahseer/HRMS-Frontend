@@ -1,52 +1,128 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { login } from '../api';
+import { saveCurrentUser, getCurrentUser } from '../../../utils/auth';
 
 export const Login: React.FC = () => {
-  const { register, handleSubmit } = useForm();
   const navigate = useNavigate();
+  const existingUser = getCurrentUser();
+
+  // Already logged in → send to right page
+  if (existingUser && localStorage.getItem('token')) {
+    return existingUser.isAdmin
+      ? <Navigate to="/employees" replace />
+      : <Navigate to={`/employees/${existingUser.userId}`} replace />;
+  }
+
+  const [form, setForm] = useState({ company_name: '', email: '', password: '' });
+  const [error, setError] = useState('');
 
   const loginMutation = useMutation({
     mutationFn: login,
     onSuccess: (data) => {
-      localStorage.setItem('token', data.access_token);
-      alert(`Logged in successfully! Welcome to ${data.schema_name} schema`);
-      navigate('/dashboard');
+      // Save everything from the login response
+      saveCurrentUser({
+        access_token: data.access_token,
+        user_id: data.user_id,
+        email: data.email,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        is_superuser: data.is_superuser,
+        schema_name: data.schema_name,
+        company_name: form.company_name,
+      });
+
+      // Admin → directory | Employee → own profile
+      if (data.is_superuser) {
+        navigate('/employees');
+      } else {
+        navigate(`/employees/${data.user_id}`);
+      }
     },
-    onError: (error: any) => {
-      alert(error.response?.data?.detail || 'Login failed');
-    }
+    onError: (err: any) => {
+      setError(err.response?.data?.detail || 'Invalid credentials. Please try again.');
+    },
   });
 
-  const onSubmit = (data: any) => {
-    loginMutation.mutate(data);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    loginMutation.mutate(form);
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
-      <h2>Sign In to Your Workspace</h2>
-      <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        <div>
-          <label>Company Name (Workspace):</label><br />
-          <input {...register('company_name')} required style={{ width: '100%', padding: '8px' }} />
+    <div className="auth-page">
+      <div className="auth-card animate-slide-up">
+        <div className="auth-logo">
+          <div className="logo-icon">H</div>
+          <div>
+            <div className="logo-name">HRMS</div>
+            <div className="logo-sub">Human Resource Management</div>
+          </div>
         </div>
-        <div>
-          <label>Email Address:</label><br />
-          <input type="email" {...register('email')} required style={{ width: '100%', padding: '8px' }} />
-        </div>
-        <div>
-          <label>Password:</label><br />
-          <input type="password" {...register('password')} required style={{ width: '100%', padding: '8px' }} />
-        </div>
-        <button type="submit" disabled={loginMutation.isPending} style={{ padding: '10px', background: '#007BFF', color: 'white', border: 'none', borderRadius: '4px' }}>
-          {loginMutation.isPending ? 'Logging in...' : 'Login'}
-        </button>
-      </form>
-      <p style={{ marginTop: '15px', textAlign: 'center' }}>
-        New company? <Link to="/register">Register here</Link>
-      </p>
+
+        <div className="auth-title">Welcome back</div>
+        <div className="auth-subtitle">Sign in to your workspace to continue</div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-label">Company Workspace</label>
+            <input
+              className="form-input"
+              placeholder="Your company name"
+              value={form.company_name}
+              onChange={e => setForm(f => ({ ...f, company_name: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Email Address</label>
+            <input
+              type="email"
+              className="form-input"
+              placeholder="you@company.com"
+              value={form.email}
+              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input
+              type="password"
+              className="form-input"
+              placeholder="••••••••"
+              value={form.password}
+              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+              required
+            />
+          </div>
+
+          {error && (
+            <div style={{ background: 'var(--danger-bg)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--radius-sm)', padding: '10px 13px', fontSize: '13px', color: 'var(--danger)', marginBottom: '14px' }}>
+              ⚠️ {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="btn btn-primary btn-lg"
+            style={{ width: '100%' }}
+            disabled={loginMutation.isPending}
+          >
+            {loginMutation.isPending ? 'Signing in...' : 'Sign In →'}
+          </button>
+        </form>
+
+        <div className="auth-divider">or</div>
+        <p style={{ textAlign: 'center', fontSize: '13.5px', color: 'var(--text-secondary)' }}>
+          New to HRMS?{' '}
+          <Link to="/register" style={{ color: 'var(--accent-light)', fontWeight: 500 }}>
+            Register your company
+          </Link>
+        </p>
+      </div>
     </div>
   );
 };
