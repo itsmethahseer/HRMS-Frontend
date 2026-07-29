@@ -1,7 +1,7 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { login } from '../api';
 
 export const Login: React.FC = () => {
@@ -44,6 +44,9 @@ export const Login: React.FC = () => {
           {loginMutation.isPending ? 'Logging in...' : 'Login'}
         </button>
       </form>
+      <p style={{ marginTop: '15px', textAlign: 'center' }}>
+        New company? <Link to="/register">Register here</Link>
+      </p>
     </div>
   );
 };

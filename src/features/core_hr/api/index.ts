@@ -1,5 +1,5 @@
 import { apiClient } from '../../../api/apiClient';
-import { Department, Employee } from '../types';
+import type { Department, Employee } from '../types';
 
 export const getEmployees = async (): Promise<Employee[]> => {
   const response = await apiClient.get('/core/employees/');
